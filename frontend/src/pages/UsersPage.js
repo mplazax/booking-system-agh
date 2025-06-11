@@ -101,7 +101,7 @@ const UsersPage = () => {
                 </IconButton>
               }
             >
-              <ListItemText primary={`${user.name} - ${user.email}`} />
+              <ListItemText primary={`${user.name} ${user.surname} - ${user.email}`} />
             </ListItem>
           ))}
         </List>
