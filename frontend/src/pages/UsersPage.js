@@ -101,7 +101,19 @@ const UsersPage = () => {
                 </IconButton>
               }
             >
-              <ListItemText primary={`${user.name} ${user.surname} - ${user.email}`} />
+              <ListItemText
+                primary={
+                  <>
+                    {`${user.name} ${user.surname} - ${user.email}`}
+                    <Typography variant="body2" color="text.secondary">
+                      Rola: {user.role}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      ID: {user.id}
+                    </Typography>
+                  </>
+                }
+              />
             </ListItem>
           ))}
         </List>
