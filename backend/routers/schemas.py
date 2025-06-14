@@ -55,13 +55,25 @@ class RoomUpdate(BaseModel):
     type: Optional[RoomType] = None
     equipment: Optional[str] = None
 
+class EquipmentBase(BaseModel):
+    name: str
+
+class EquipmentCreate(EquipmentBase):
+    name: str
+
+class EquipmentResponse(EquipmentBase):
+    id: int
+    name: str
+
+    class Config:
+        orm_mode = True
 
 class RoomResponse(BaseModel):
     id: int
     name: str
     capacity: int
     type: RoomType
-    equipment: Optional[str] = None
+    equipment: list[EquipmentResponse] = []
 
     class Config:
         from_attributes = True
@@ -97,6 +109,7 @@ class ChangeRequestCreate(BaseModel):
     status: ChangeRequestStatus
     reason: str
     room_requirements: str
+    minimum_capacity: int
     created_at: datetime
 
 
@@ -104,9 +117,10 @@ class ChangeRequestUpdate(BaseModel):
     change_request_id: int
     course_event_id: int
     initiator_id: int
-    status: Optional[ChangeRequestStatus] = None
-    reason: Optional[str] = None
-    room_requirements: Optional[str] = None
+    status: ChangeRequestStatus | None
+    reason: str | None
+    room_requirements: str | None
+    minimum_capacity: int
     created_at: datetime
 
 
@@ -117,6 +131,7 @@ class ChangeRequestResponse(BaseModel):
     status: ChangeRequestStatus
     reason: str
     room_requirements: str
+    minimum_capacity: int
     created_at: datetime
 
     class Config:
@@ -189,6 +204,14 @@ class CourseEventResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class AvailabilityProposalResponse(BaseModel):
+    id: int
+    user_id: int
+    day: date
+    time_slot_id: int
+
+    class Config:
+        orm_mode = True
 
 class ChangeRecomendationResponse(BaseModel):
     id: int
@@ -196,6 +219,7 @@ class ChangeRecomendationResponse(BaseModel):
     recommended_day: date
     recommended_slot_id: int
     recommended_room_id: int
+    source_proposal: AvailabilityProposalResponse | None = None
 
     class Config:
         from_attributes = True
@@ -220,3 +244,4 @@ class RoomUnavailabilityResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True

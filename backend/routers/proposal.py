@@ -1,8 +1,8 @@
 
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException
-from model import AvailabilityProposal, ChangeRequest, User, ChangeRequestStatus
-from routers.auth import get_current_user
+from model import AvailabilityProposal, ChangeRequest, User, ChangeRequestStatus, UserRole
+from routers.auth import get_current_user, role_required
 from routers.schemas import ProposalCreate, ProposalResponse, ProposalUpdate
 from sqlalchemy.orm import Session
 from starlette.status import (
@@ -12,9 +12,6 @@ from starlette.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_404_NOT_FOUND,
 )
-
-from model import UserRole
-from routers.auth import role_required
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 
@@ -175,7 +172,7 @@ async def create_proposal(
 async def change_status_by_leader(
         proposal_id: int, new_status: bool, db: Session = Depends(get_db), current_user: User = Depends(role_required([UserRole.PROWADZACY]))
 ):
-    proposal = db.query(ChangeRequest).filter(AvailabilityProposal.id == proposal_id).first()
+    proposal = db.query(AvailabilityProposal).filter(AvailabilityProposal.id == proposal_id).first()
     if not proposal:
         raise HTTPException(status_code=404, detail="Request not found")
 
@@ -197,7 +194,7 @@ async def change_status_by_leader(
 async def change_status_by_representative(
         proposal_id: int, new_status: bool, db: Session = Depends(get_db), current_user: User = Depends(role_required([UserRole.STAROSTA]))
 ):
-    proposal = db.query(ChangeRequest).filter(AvailabilityProposal.id == proposal_id).first()
+    proposal = db.query(AvailabilityProposal).filter(AvailabilityProposal.id == proposal_id).first()
     if not proposal:
         raise HTTPException(status_code=404, detail="Request not found")
 

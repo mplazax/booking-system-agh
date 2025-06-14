@@ -8,9 +8,11 @@ from model import (
     Room,
     RoomUnavailability,
     User,
+    Equipment
 )
 from routers.auth import get_current_user
 from routers.schemas import ChangeRecomendationResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_204_NO_CONTENT
 
@@ -89,39 +91,46 @@ async def find_and_add_common_availability(
             ~Room.id.in_(
                 db.query(CourseEvent.room_id).filter(
                     CourseEvent.day == day,
-                    CourseEvent.time_slot_id == slot_id.id,
+                    CourseEvent.time_slot_id == slot_id,
                     CourseEvent.canceled == False,
                 )
             ),
         )
 
         # Add room requirements filtering if specified
-        # TODO: dodac filtrowanie pokoi po wymaganiach pokoju
         if change_request.room_requirements:
-            requirements = change_request.room_requirements.lower()
-            if "projector" in requirements:
-                available_rooms_query = available_rooms_query.filter(
-                    Room.equipment.ilike("%projector%")
-                )
-            if "capacity" in requirements:
-                # Extract capacity requirement if present
-                import re
+            try:
+                import json
+                required_equipment = json.loads(change_request.room_requirements)  # <-- np. ["projector"]
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid room_requirements format")
 
-                capacity_match = re.search(r"capacity\s*>\s*(\d+)", requirements)
-                if capacity_match:
-                    min_capacity = int(capacity_match.group(1))
-                    available_rooms_query = available_rooms_query.filter(
-                        Room.capacity >= min_capacity
-                    )
+            if isinstance(required_equipment, list) and required_equipment:
+                available_rooms_query = available_rooms_query.join(Room.equipment).filter(
+                    Equipment.name.in_(required_equipment)
+                ).group_by(Room.id).having(
+                    func.count(Equipment.id) >= len(required_equipment)
+                )
+
+        if change_request.minimum_capacity > 0:
+            # Extract capacity requirement if present
+            available_rooms_query = available_rooms_query.filter(
+                Room.capacity >= change_request.minimum_capacity
+            )
 
         available_rooms = available_rooms_query.all()
 
         for room in available_rooms:
+            source_proposal = next(
+                (p for p in user1_proposals if p.time_slot_id == slot_id and p.day == day),
+                None
+            )
             recommendation = ChangeRecomendation(
                 change_request_id=change_request_id,
-                recommended_slot_id=slot_id.id,
+                recommended_slot_id=slot_id,
                 recommended_day=day,
                 recommended_room_id=room.id,
+                source_proposal_id=source_proposal.id if source_proposal else None
             )
             recommendations.append(recommendation)
             db.add(recommendation)
@@ -143,7 +152,7 @@ async def get_proposals(
     change_request_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ChangeRecomendation]:
+) -> list[ChangeRecomendationResponse]:
     """
     Get all recommendations for a specific change request.
     
