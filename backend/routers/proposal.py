@@ -13,8 +13,8 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
 )
 
-from backend.model import UserRole
-from backend.routers.auth import role_required
+from model import UserRole
+from routers.auth import role_required
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 

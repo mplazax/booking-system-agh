@@ -1,67 +1,129 @@
 import React, { useContext, useEffect } from "react";
-import Navbar from "../components/Navbar";
-import { Box, Typography, Grid, Card, CardContent, CardActions, Button } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CardActionArea,
+  Container,
+  Icon,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../App";
 
+// Import ikon
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
+import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
+import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
+import PeopleIcon from "@mui/icons-material/People";
+import GroupIcon from "@mui/icons-material/Group";
+import SchoolIcon from "@mui/icons-material/School";
+import RuleIcon from "@mui/icons-material/Rule";
 
 const MainPage = () => {
   const navigate = useNavigate();
-
   const { user } = useContext(UserContext);
-  console.log("Aktualny użytkownik:", user);
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!user) {
       navigate("/login", { replace: true });
     }
-  }, [navigate]);
-
+  }, [user, navigate]);
 
   const features = [
-    { title: "Zgłoszenia", description: "Przeglądaj zgłoszenia zmian.", path: "/requests", allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY", "STAROSTA"] },
-    { title: "Dostępność", description: "Wskaż swoją dostępność.", path: "/availability", allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY", "STAROSTA"] },
-    { title: "Propozycje", description: "Przeglądaj propozycje terminów.", path: "/proposals", allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY", "STAROSTA"] },
-    { title: "Sale", description: "Przeglądaj sale.", path: "/rooms", allowedRole: ["ADMIN", "KOORDYNATOR"] },
-    { title: "Użytkownicy", description: "Przeglądaj użytkowników.", path: "/users", allowedRole: ["ADMIN"] },
-    { title: "Grupy", description: "Przeglądaj grupy.", path: "/groups", allowedRole: ["ADMIN", "KOORDYNATOR"] },
-    { title: "Kursy", description: "Przeglądaj kursy.", path: "/courses", allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY"] },
+    {
+      title: "Kalendarz i Zgłoszenia",
+      description: "Przeglądaj plan i zgłaszaj zmiany.",
+      path: "/requests",
+      icon: <EventAvailableIcon fontSize="large" color="primary" />,
+      allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY", "STAROSTA"],
+    },
+    {
+      title: "Dostępność",
+      description: "Wskaż swoją dostępność dla zgłoszeń.",
+      path: "/availability",
+      icon: <RuleIcon fontSize="large" color="primary" />,
+      allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY", "STAROSTA"],
+    },
+    {
+      title: "Propozycje",
+      description: "Przeglądaj propozycje terminów.",
+      path: "/proposals",
+      icon: <LibraryBooksIcon fontSize="large" color="primary" />,
+      allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY", "STAROSTA"],
+    },
+    {
+      title: "Sale",
+      description: "Zarządzaj salami i ich dostępnością.",
+      path: "/rooms",
+      icon: <MeetingRoomIcon fontSize="large" color="primary" />,
+      allowedRole: ["ADMIN", "KOORDYNATOR"],
+    },
+    {
+      title: "Użytkownicy",
+      description: "Zarządzaj kontami użytkowników.",
+      path: "/users",
+      icon: <PeopleIcon fontSize="large" color="primary" />,
+      allowedRole: ["ADMIN"],
+    },
+    {
+      title: "Grupy",
+      description: "Zarządzaj grupami studenckimi.",
+      path: "/groups",
+      icon: <GroupIcon fontSize="large" color="primary" />,
+      allowedRole: ["ADMIN", "KOORDYNATOR"],
+    },
+    {
+      title: "Kursy",
+      description: "Zarządzaj listą prowadzonych kursów.",
+      path: "/courses",
+      icon: <SchoolIcon fontSize="large" color="primary" />,
+      allowedRole: ["ADMIN", "KOORDYNATOR", "PROWADZACY"],
+    },
   ];
-
 
   const visibleFeatures = features.filter(
     (feature) => user && feature.allowedRole.includes(user.role)
   );
 
-
   return (
-    <Box>
-      <Navbar />
-      <Box padding={4}>
-        <Typography variant="h4" gutterBottom>
-          Witaj w systemie zarządzania zajęciami!
-        </Typography>
-        <Grid container spacing={3}>
-          {visibleFeatures.map((feature) => (
-            <Grid item xs={12} sm={6} md={3} key={feature.title}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">{feature.title}</Typography>
-                  <Typography variant="body2" color="textSecondary">
+    <Container maxWidth="lg">
+      <Typography variant="h4" gutterBottom>
+        Witaj, {user?.name}!
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+        Wybierz jedną z dostępnych opcji, aby rozpocząć pracę z systemem.
+      </Typography>
+      <Grid container spacing={4}>
+        {visibleFeatures.map((feature) => (
+          <Grid item xs={12} sm={6} md={4} key={feature.title}>
+            <Card sx={{ height: "100%" }}>
+              <CardActionArea
+                onClick={() => navigate(feature.path)}
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-start",
+                  p: 3,
+                }}
+              >
+                <Box sx={{ mb: 2 }}>{feature.icon}</Box>
+                <CardContent sx={{ textAlign: "center" }}>
+                  <Typography variant="h6" component="div">
+                    {feature.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
                     {feature.description}
                   </Typography>
                 </CardContent>
-                <CardActions>
-                  <Button size="small" onClick={() => navigate(feature.path)}>
-                    Otwórz
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </Box>
-    </Box>
+              </CardActionArea>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Container>
   );
 };
 

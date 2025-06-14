@@ -21,6 +21,7 @@ import { apiRequest } from "../services/apiService";
 import { pl } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../App";
+import SchoolIcon from '@mui/icons-material/School';
 
 const locales = { "pl": pl };
 const localizer = dateFnsLocalizer({

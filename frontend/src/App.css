@@ -1,38 +1,73 @@
-.App {
-  text-align: center;
+/* src/App.css */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f4f6f8; /* Ustawienie tła zgodne z motywem */
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Dostosowanie stylów dla react-big-calendar */
+.rbc-calendar {
+  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.rbc-toolbar {
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 10px 20px;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+.rbc-toolbar button {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  color: #333;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.rbc-toolbar button:hover,
+.rbc-toolbar button:active,
+.rbc-btn-group > button:focus {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+  box-shadow: none;
+}
+
+.rbc-toolbar .rbc-active button {
+  background-color: #1976d2; /* Kolor primary z motywu */
   color: white;
+  border-color: #1976d2;
 }
 
-.App-link {
-  color: #61dafb;
+.rbc-event {
+  background-color: #1976d2; /* Kolor primary */
+  border: 1px solid #1565c0;
+  color: white;
+  border-radius: 4px;
+  padding: 4px 6px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.rbc-day-slot .rbc-event {
+  border: 1px solid #1565c0;
+}
+
+.rbc-header {
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 8px 0;
+  font-weight: 600;
+  color: #333;
+}
+
+.rbc-today {
+  background-color: #e3f2fd; /* Jasnoniebieskie tło dla dzisiejszego dnia */
 }

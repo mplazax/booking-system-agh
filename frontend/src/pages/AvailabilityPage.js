@@ -1,50 +1,108 @@
-// frontend/src/pages/AvailabilityPage.js
-import React, {useEffect, useState} from "react";
-import { Box, TextField, Button, Typography } from "@mui/material";
+// Przykład dla src/pages/AvailabilityPage.js
+import React, { useState } from "react";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Container,
+  Paper,
+  Stack,
+  Alert,
+} from "@mui/material";
 import { apiRequest } from "../services/apiService";
-import Navbar from "../components/Navbar";
-import {useNavigate} from "react-router-dom";
 
 const AvailabilityPage = () => {
-  const [formData, setFormData] = useState({ change_request_id: "", start_date: "", end_date: "" });
-  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    change_request_id: "",
+    start_date: "",
+    end_date: "",
+  });
+  const [message, setMessage] = useState("");
 
-    // Sprawdzenie czy użytkownik jest zalogowany (np. po tokenie w localStorage)
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-        navigate("/login", { replace: true });
-    }
-  }, [navigate]);
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = () => {
-    apiRequest("/proposals", {
-      method: "POST",
-      body: JSON.stringify({
-        change_request_id: formData.change_request_id,
-        interval: {
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-        },
-      }),
-    })
-      .then(() => alert("Dostępność została zgłoszona"))
-      .catch((error) => console.error("Błąd podczas zgłaszania dostępności:", error));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    try {
+      await apiRequest("/proposals", {
+        method: "POST",
+        body: JSON.stringify({
+          change_request_id: parseInt(formData.change_request_id, 10),
+          interval: {
+            start_date: new Date(formData.start_date).toISOString(),
+            end_date: new Date(formData.end_date).toISOString(),
+          },
+        }),
+      });
+      setMessage("Twoja dostępność została pomyślnie zgłoszona.");
+      setFormData({ change_request_id: "", start_date: "", end_date: "" });
+    } catch (error) {
+      console.error("Błąd podczas zgłaszania dostępności:", error);
+      setMessage(`Wystąpił błąd: ${error.message}`);
+    }
   };
 
   return (
-    <Box>
-        <Navbar />
-      <Typography variant="h4">Wskaż Dostępność</Typography>
-      <TextField label="ID Zgłoszenia" name="change_request_id" onChange={handleChange} />
-      <TextField label="Data Początkowa" name="start_date" type="datetime-local" onChange={handleChange} />
-      <TextField label="Data Końcowa" name="end_date" type="datetime-local" onChange={handleChange} />
-      <Button onClick={handleSubmit}>Wyślij</Button>
-    </Box>
+    <Container maxWidth="sm">
+      <Paper sx={{ p: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          Wskaż swoją dostępność
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Jeśli otrzymałeś zgłoszenie zmiany terminu, możesz tutaj wskazać
+          przedziały czasowe, które Ci odpowiadają.
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit}>
+          <Stack spacing={3}>
+            <TextField
+              label="ID Zgłoszenia Zmiany"
+              name="change_request_id"
+              type="number"
+              value={formData.change_request_id}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Dostępny od"
+              name="start_date"
+              type="datetime-local"
+              value={formData.start_date}
+              onChange={handleChange}
+              required
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="Dostępny do"
+              name="end_date"
+              type="datetime-local"
+              value={formData.end_date}
+              onChange={handleChange}
+              required
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+            {message && (
+              <Alert
+                severity={
+                  message.startsWith("Wystąpił błąd") ? "error" : "success"
+                }
+              >
+                {message}
+              </Alert>
+            )}
+            <Button type="submit" variant="contained" size="large">
+              Wyślij propozycję terminu
+            </Button>
+          </Stack>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 
