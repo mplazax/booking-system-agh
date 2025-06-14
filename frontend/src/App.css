@@ -1,4 +1,3 @@
-/* src/App.css */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
@@ -6,68 +5,5 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f4f6f8; /* Ustawienie tła zgodne z motywem */
-}
-
-/* Dostosowanie stylów dla react-big-calendar */
-.rbc-calendar {
-  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #fff;
-}
-
-.rbc-toolbar {
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 10px 20px;
-}
-
-.rbc-toolbar button {
-  background-color: #fff;
-  border: 1px solid #ccc;
-  color: #333;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.rbc-toolbar button:hover,
-.rbc-toolbar button:active,
-.rbc-btn-group > button:focus {
-  background-color: #e0e0e0;
-  border-color: #bbb;
-  box-shadow: none;
-}
-
-.rbc-toolbar .rbc-active button {
-  background-color: #1976d2; /* Kolor primary z motywu */
-  color: white;
-  border-color: #1976d2;
-}
-
-.rbc-event {
-  background-color: #1976d2; /* Kolor primary */
-  border: 1px solid #1565c0;
-  color: white;
-  border-radius: 4px;
-  padding: 4px 6px;
-}
-
-.rbc-day-slot .rbc-event {
-  border: 1px solid #1565c0;
-}
-
-.rbc-header {
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 8px 0;
-  font-weight: 600;
-  color: #333;
-}
-
-.rbc-today {
-  background-color: #e3f2fd; /* Jasnoniebieskie tło dla dzisiejszego dnia */
+  background-color: #f4f6f8;
 }

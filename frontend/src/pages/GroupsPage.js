@@ -1,139 +1,242 @@
 import React, { useEffect, useState } from "react";
 import {
   Box,
-  Typography,
   Button,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
+  Paper,
+  Container,
+  Toolbar,
+  Stack,
+  IconButton,
+  MenuItem,
 } from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
 import DeleteIcon from "@mui/icons-material/Delete";
-import Navbar from "../components/Navbar";
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+import GroupIcon from "@mui/icons-material/Group";
 import { apiRequest } from "../services/apiService";
-import {useNavigate} from "react-router-dom";
 
 const GroupsPage = () => {
   const [groups, setGroups] = useState([]);
+  const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: "", year: "", leader_id: "" });
+  const [formData, setFormData] = useState({
+    id: null,
+    name: "",
+    year: "",
+    leader_id: "",
+  });
+  const [editMode, setEditMode] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
-  const navigate = useNavigate();
-
-  // Sprawdzenie czy użytkownik jest zalogowany (np. po tokenie w localStorage)
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login", { replace: true });
-    }
     fetchGroups();
-  }, [navigate]);
+    fetchUsers();
+  }, []);
 
   const fetchGroups = () => {
     apiRequest("/groups")
       .then((data) => setGroups(data))
-      .catch((error) => console.error("Error fetching groups:", error));
+      .catch(console.error);
   };
 
-  const handleOpen = () => setOpen(true);
+  const fetchUsers = () => {
+    apiRequest("/users")
+      .then((data) => setUsers(data))
+      .catch(console.error);
+  };
+
+  const handleOpen = (group = null) => {
+    if (group) {
+      setFormData({
+        id: group.id,
+        name: group.name,
+        year: group.year,
+        leader_id: group.leader_id,
+      });
+      setEditMode(true);
+    } else {
+      setFormData({ id: null, name: "", year: "", leader_id: "" });
+      setEditMode(false);
+    }
+    setOpen(true);
+  };
   const handleClose = () => setOpen(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const handleChange = (e) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = () => {
-    apiRequest("/groups", {
-      method: "POST",
-      body: JSON.stringify(formData),
-    })
-      .then((newGroup) => {
-        setGroups((prev) => [...prev, newGroup]);
+    const payload = {
+      ...formData,
+      year: parseInt(formData.year, 10),
+      leader_id: parseInt(formData.leader_id, 10),
+    };
+
+    const request = editMode
+      ? apiRequest(`/groups/${formData.id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        })
+      : apiRequest("/groups", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+
+    request
+      .then(() => {
+        fetchGroups();
         handleClose();
       })
-      .catch((error) => console.error("Error adding group:", error));
+      .catch((error) => alert(`Błąd: ${error.message}`));
   };
 
-  const handleDelete = (groupId) => {
-    // Optimistically update the UI
-    setGroups((prev) => prev.filter((group) => group.id !== groupId));
-
-    // Send the delete request to the backend
-    apiRequest(`/groups/${groupId}`, { method: "DELETE" })
-      .catch((error) => {
-        console.error("Error deleting group:", error);
-        // Revert the UI update if the request fails
-        fetchGroups();
-      });
+  const handleDelete = (id) => {
+    if (window.confirm("Czy na pewno chcesz usunąć tę grupę?")) {
+      apiRequest(`/groups/${id}`, { method: "DELETE" })
+        .then(fetchGroups)
+        .catch(console.error);
+    }
   };
+
+  const getUserNameById = (id) =>
+    users.find((u) => u.id === id)?.name || "Nieznany";
+
+  const columns = [
+    { field: "id", headerName: "ID", width: 90 },
+    {
+      field: "name",
+      headerName: "Nazwa Grupy",
+      width: 250,
+      renderCell: (params) => (
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <GroupIcon sx={{ mr: 1, color: "text.secondary" }} />
+          {params.value}
+        </Box>
+      ),
+    },
+    { field: "year", headerName: "Rok", type: "number", width: 100 },
+    {
+      field: "leader_id",
+      headerName: "Starosta",
+      flex: 1,
+      valueGetter: (value) => getUserNameById(value),
+    },
+    {
+      field: "actions",
+      headerName: "Akcje",
+      width: 150,
+      sortable: false,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={1}>
+          <IconButton size="small" onClick={() => handleOpen(params.row)}>
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => handleDelete(params.row.id)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Stack>
+      ),
+    },
+  ];
+
+  const filteredRows = groups.filter((group) =>
+    group.name.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const starostas = users.filter((user) => user.role === "STAROSTA");
 
   return (
-    <Box>
-      <Navbar />
-      <Box padding={2}>
-        <Typography variant="h4">Zarządzaj grupami</Typography>
-        <List>
-          {groups.map((group) => (
-            <ListItem
-              key={group.id}
-              secondaryAction={
-                <IconButton edge="end" onClick={() => handleDelete(group.id)}>
-                  <DeleteIcon />
-                </IconButton>
-              }
-            >
-              <ListItemText primary={`${group.name} - Rok: ${group.year || "Brak danych"}`} />
-            </ListItem>
-          ))}
-        </List>
-        <Button variant="contained" onClick={handleOpen}>
-          Dodaj grupę
-        </Button>
-      </Box>
+    <Container maxWidth="lg">
+      <Paper>
+        <Toolbar>
+          <Box sx={{ flexGrow: 1 }}>
+            <TextField
+              variant="outlined"
+              size="small"
+              placeholder="Szukaj po nazwie grupy..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              sx={{ width: 300 }}
+            />
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpen()}
+          >
+            Dodaj Grupę
+          </Button>
+        </Toolbar>
+        <Box sx={{ height: "70vh", width: "100%" }}>
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            pageSizeOptions={[10, 25, 50]}
+            checkboxSelection
+            disableRowSelectionOnClick
+          />
+        </Box>
+      </Paper>
 
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Dodaj grupę</DialogTitle>
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {editMode ? "Edytuj grupę" : "Dodaj nową grupę"}
+        </DialogTitle>
         <DialogContent>
-          <TextField
-            margin="dense"
-            label="Nazwa"
-            name="name"
-            fullWidth
-            value={formData.name}
-            onChange={handleChange}
-          />
-          <TextField
-            margin="dense"
-            label="Rok"
-            name="year"
-            type="number"
-            fullWidth
-            value={formData.year}
-            onChange={handleChange}
-          />
-          <TextField
-            margin="dense"
-            label="ID lidera"
-            name="leader_id"
-            fullWidth
-            value={formData.leader_id}
-            onChange={handleChange}
-          />
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            <TextField
+              label="Nazwa grupy"
+              name="name"
+              fullWidth
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+            <TextField
+              label="Rok studiów"
+              name="year"
+              type="number"
+              fullWidth
+              value={formData.year}
+              onChange={handleChange}
+              required
+            />
+            <TextField
+              select
+              label="Starosta"
+              name="leader_id"
+              fullWidth
+              value={formData.leader_id}
+              onChange={handleChange}
+              required
+            >
+              {starostas.map((starosta) => (
+                <MenuItem key={starosta.id} value={starosta.id}>
+                  {starosta.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ p: "16px 24px" }}>
           <Button onClick={handleClose}>Anuluj</Button>
           <Button onClick={handleSubmit} variant="contained">
-            Dodaj
+            {editMode ? "Zapisz zmiany" : "Dodaj"}
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 

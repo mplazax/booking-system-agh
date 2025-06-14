@@ -1,11 +1,18 @@
 from datetime import date, datetime
+from typing import Optional
 
 from model import ChangeRequestStatus, RoomType, UserRole
 from pydantic import BaseModel, EmailStr
-from pydantic.v1 import validator
 
 
 # User
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    surname: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role: Optional[UserRole] = None
+
 class UserResponse(BaseModel):
     id: int
     name: str
@@ -14,7 +21,7 @@ class UserResponse(BaseModel):
     role: UserRole
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserCreate(BaseModel):
@@ -24,12 +31,6 @@ class UserCreate(BaseModel):
     password: str
     role: UserRole
 
-    @validator("password")
-    def check_password(cls, value):
-        if len(value) < 6:
-            raise ValueError("Password must be at least 6 characters")
-        return value
-
 
 # Auth
 class Token(BaseModel):
@@ -38,7 +39,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    email: str | None = None
+    email: Optional[str] = None
 
 
 # Room
@@ -46,24 +47,13 @@ class RoomCreate(BaseModel):
     name: str
     capacity: int
     type: RoomType
-    equipment: str | None
-
-    @validator("capacity")
-    def capacity_must_be_positive(cls, value):
-        if value <= 0:
-            raise ValueError("Capacity must be greater than zero")
-        return value
-
+    equipment: Optional[str] = None
 
 class RoomUpdate(BaseModel):
-    capacity: int | None
-    type: RoomType | None
-    equipment: str | None
-
-    @validator("capacity")
-    def check_capacity(cls, value):
-        if value <= 0:
-            raise ValueError("Capacity must be greater than zero")
+    name: Optional[str] = None
+    capacity: Optional[int] = None
+    type: Optional[RoomType] = None
+    equipment: Optional[str] = None
 
 
 class RoomResponse(BaseModel):
@@ -71,25 +61,17 @@ class RoomResponse(BaseModel):
     name: str
     capacity: int
     type: RoomType
-    equipment: str | None = None
+    equipment: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Group
 class GroupCreate(BaseModel):
     name: str
-    year: int | None
+    year: Optional[int] = None
     leader_id: int
-
-    @validator("year")
-    def valid_study_year(cls, value):
-        if value is None:
-            return value
-        if 0 <= value <= 6:
-            return value
-        raise ValueError("Year must be between 1 and 6")
 
 
 class GroupResponse(BaseModel):
@@ -99,27 +81,19 @@ class GroupResponse(BaseModel):
     leader_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class GroupUpdate(BaseModel):
-    name: str | None
-    year: int | None
-    leader_id: int | None
-
-    @validator("year")
-    def valid_study_year(cls, value):
-        if value is None:
-            return value
-        if 0 <= value <= 6:
-            return value
-        raise ValueError("Year must be between 1 and 6")
+    name: Optional[str] = None
+    year: Optional[int] = None
+    leader_id: Optional[int] = None
 
 
 # Change requests
 class ChangeRequestCreate(BaseModel):
     course_event_id: int
-    initiator_id: int  # should be assigned automatically
+    initiator_id: int
     status: ChangeRequestStatus
     reason: str
     room_requirements: str
@@ -130,13 +104,14 @@ class ChangeRequestUpdate(BaseModel):
     change_request_id: int
     course_event_id: int
     initiator_id: int
-    status: ChangeRequestStatus | None
-    reason: str | None
-    room_requirements: str | None
+    status: Optional[ChangeRequestStatus] = None
+    reason: Optional[str] = None
+    room_requirements: Optional[str] = None
     created_at: datetime
 
 
 class ChangeRequestResponse(BaseModel):
+    id: int
     course_event_id: int
     initiator_id: int
     status: ChangeRequestStatus
@@ -145,7 +120,7 @@ class ChangeRequestResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Proposal
@@ -165,14 +140,14 @@ class ProposalUpdate(BaseModel):
 class ProposalResponse(BaseModel):
     id: int
     change_request_id: int
-    accepted_by_leader: bool
-    accepted_by_representative: bool
     user_id: int
     day: date
     time_slot_id: int
+    accepted_by_leader: bool
+    accepted_by_representative: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CourseCreate(BaseModel):
@@ -185,29 +160,34 @@ class CourseResponse(CourseCreate):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CourseEventCreate(BaseModel):
     course_id: int
-    room_id: int
+    room_id: Optional[int] = None
     day: date
     time_slot_id: int
     canceled: bool = False
 
 
 class CourseEventUpdate(BaseModel):
-    room_id: int
+    room_id: Optional[int] = None
     day: date
     time_slot_id: int
     canceled: bool = False
 
 
-class CourseEventResponse(CourseEventCreate):
+class CourseEventResponse(BaseModel):
     id: int
+    course_id: int
+    room_id: Optional[int] = None
+    day: date
+    time_slot_id: int
+    canceled: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ChangeRecomendationResponse(BaseModel):
@@ -218,7 +198,7 @@ class ChangeRecomendationResponse(BaseModel):
     recommended_room_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class RoomUnavailabilityCreate(BaseModel):
@@ -239,4 +219,4 @@ class RoomUnavailabilityResponse(BaseModel):
     end_datetime: date
 
     class Config:
-        orm_mode = True
+        from_attributes = True

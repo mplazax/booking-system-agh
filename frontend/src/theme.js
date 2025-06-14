@@ -1,92 +1,49 @@
-// src/theme.js
 import { createTheme } from "@mui/material/styles";
 
-// Profesjonalna paleta kolorów, inspirowana barwami akademickimi i technologicznymi.
-// Główny kolor (primary) - stonowany, profesjonalny niebieski.
-// Kolor pomocniczy (secondary) - energetyczny, ale nieagresywny turkus/mięta do akcentów.
 const theme = createTheme({
   palette: {
-    primary: {
-      main: "#1976d2", // Klasyczny, zaufany niebieski
-      light: "#42a5f5",
-      dark: "#1565c0",
-    },
-    secondary: {
-      main: "#009688", // Elegancki turkus/teal
-      light: "#4db6ac",
-      dark: "#00796b",
-    },
-    background: {
-      default: "#f4f6f8", // Jasnoszary, neutralny tło
-      paper: "#ffffff", // Czysta biel dla kart i paneli
-    },
-    text: {
-      primary: "#1c2025",
-      secondary: "#5f6c7a",
-    },
+    primary: { main: "#1E5E3A" },
+    secondary: { main: "#424242" },
+    background: { default: "#f4f6f8", paper: "#ffffff" },
+    text: { primary: "#171717", secondary: "#5f6c7a" },
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 700,
-      color: "#1c2025",
-    },
-    h5: {
-      fontWeight: 600,
-    },
-    h6: {
-      fontWeight: 600,
-    },
-    button: {
-      textTransform: "none", // Przyciski bez wielkich liter - bardziej nowocześnie
-      fontWeight: "600",
-    },
+    h4: { fontWeight: 700, color: "#171717" },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
+    button: { textTransform: "none", fontWeight: 600 },
   },
-  shape: {
-    borderRadius: 8, // Lekko zaokrąglone rogi dla nowoczesnego wyglądu
-  },
+  shape: { borderRadius: 8 },
   components: {
-    // Globalne nadpisanie stylów dla kluczowych komponentów
     MuiAppBar: {
       styleOverrides: {
         root: {
           backgroundColor: "#ffffff",
-          color: "#1c2025",
+          color: "#171717",
           boxShadow: "0px 1px 4px rgba(0, 0, 0, 0.1)",
         },
       },
     },
     MuiButton: {
-      defaultProps: {
-        disableElevation: true,
-      },
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-        containedPrimary: {
-          "&:hover": {
-            backgroundColor: "#1565c0",
-          },
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.05)",
-          transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-          "&:hover": {
-            transform: "translateY(-4px)",
-            boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.08)",
-          },
-        },
-      },
+      defaultProps: { disableElevation: true },
+      styleOverrides: { root: { borderRadius: 8, padding: "10px 22px" } },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
           boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.05)",
+          backgroundImage: "none",
+        },
+      },
+    },
+    MuiDataGrid: {
+      styleOverrides: {
+        root: { border: "none" },
+        cell: { borderBottom: "1px solid #f0f0f0" },
+        columnHeaders: {
+          backgroundColor: "#f4f6f8",
+          borderBottom: "1px solid #e0e0e0",
         },
       },
     },

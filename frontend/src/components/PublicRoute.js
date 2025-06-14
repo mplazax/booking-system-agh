@@ -1,4 +1,3 @@
-// src/components/PublicRoute.js
 import React, { useContext } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { UserContext } from "../App";
@@ -20,12 +19,10 @@ const PublicRoute = () => {
     );
   }
 
-  // Jeśli użytkownik jest zalogowany, nie pozwól mu wejść na stronę logowania
   if (user) {
     return <Navigate to="/main" replace />;
   }
 
-  // Jeśli nie jest zalogowany, wyświetl stronę publiczną (np. logowanie)
   return <Outlet />;
 };
 

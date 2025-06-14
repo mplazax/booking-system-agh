@@ -8,7 +8,6 @@ import {
 import {
   ThemeProvider,
   CssBaseline,
-  Box,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -16,12 +15,8 @@ import {
   Button,
 } from "@mui/material";
 import theme from "./theme";
-
-// Komponenty routingu
 import PrivateRoute from "./components/PrivateRoute";
 import PublicRoute from "./components/PublicRoute";
-
-// Strony
 import LoginPage from "./pages/LoginPage";
 import MainPage from "./pages/MainPage";
 import RoomsPage from "./pages/RoomsPage";
@@ -30,13 +25,11 @@ import GroupsPage from "./pages/GroupsPage";
 import CoursesPage from "./pages/CoursesPage";
 import ProposalsPage from "./pages/ProposalsPage";
 import ChangeRequestsPage from "./pages/ChangeRequestsPage";
-import AvailabilityPage from "./pages/AvailabilityPage";
-
-// Serwisy
+import SingleRequestPage from "./pages/SingleRequestPage";
 import {
   isAuthenticated,
   getCurrentUser,
-  logout,
+  logout as authLogout,
 } from "./services/authService";
 
 export const UserContext = createContext(null);
@@ -45,7 +38,7 @@ export const ErrorContext = createContext(null);
 function App() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true); // Kluczowy stan do zarządzania startem aplikacji
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -54,23 +47,23 @@ function App() {
           const userData = await getCurrentUser();
           setUser(userData);
         } catch (err) {
-          // Jeśli token jest nieprawidłowy (np. wygasł), wyloguj
-          logout();
+          authLogout();
           setUser(null);
           console.error("Authentication check failed:", err);
         }
       }
-      // Niezależnie od wyniku, kończymy ładowanie
       setLoading(false);
     };
-
     checkAuth();
   }, []);
 
   const handleCloseError = () => setError("");
+  const handleLogout = () => {
+    authLogout();
+    setUser(null);
+  };
 
-  // Wartość przekazywana do kontekstu
-  const userContextValue = { user, setUser, loading };
+  const userContextValue = { user, setUser, loading, logout: handleLogout };
 
   return (
     <ThemeProvider theme={theme}>
@@ -79,27 +72,25 @@ function App() {
         <UserContext.Provider value={userContextValue}>
           <Router>
             <Routes>
-              {/* Trasy publiczne (dostępne tylko dla niezalogowanych) */}
               <Route element={<PublicRoute />}>
                 <Route path="/login" element={<LoginPage />} />
               </Route>
 
-              {/* Trasy prywatne (dostępne tylko dla zalogowanych) */}
               <Route element={<PrivateRoute />}>
                 <Route path="/main" element={<MainPage />} />
+                <Route path="/requests" element={<ChangeRequestsPage />} />
+                <Route
+                  path="/request/:requestId"
+                  element={<SingleRequestPage />}
+                />
+                <Route path="/proposals" element={<ProposalsPage />} />
                 <Route path="/rooms" element={<RoomsPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/groups" element={<GroupsPage />} />
                 <Route path="/courses" element={<CoursesPage />} />
-                <Route path="/proposals" element={<ProposalsPage />} />
-                <Route path="/requests" element={<ChangeRequestsPage />} />
-                <Route path="/availability" element={<AvailabilityPage />} />
-
-                {/* Domyślna trasa po zalogowaniu */}
                 <Route path="/" element={<Navigate to="/main" replace />} />
               </Route>
 
-              {/* Fallback dla wszystkich innych ścieżek */}
               <Route
                 path="*"
                 element={

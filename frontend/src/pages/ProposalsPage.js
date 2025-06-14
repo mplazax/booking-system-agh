@@ -1,303 +1,157 @@
-import React, { useEffect, useState } from "react";
-import { Box, Typography, Button, List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, MenuItem } from "@mui/material";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  Box,
+  Paper,
+  Container,
+  Toolbar,
+  TextField,
+  IconButton,
+  Stack,
+} from "@mui/material";
+import { DataGrid } from "@mui/x-data-grid";
 import DeleteIcon from "@mui/icons-material/Delete";
-import Navbar from "../components/Navbar";
 import { apiRequest } from "../services/apiService";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 
+const timeSlotMap = {
+  1: "8:00-9:30",
+  2: "9:45-11:15",
+  3: "11:30-13:00",
+  4: "13:15-14:45",
+  5: "15:00-16:30",
+  6: "16:45-18:15",
+  7: "18:30-20:00",
+};
+
 const ProposalsPage = () => {
   const [proposals, setProposals] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ change_request_id: "", user_id: "", day: "", time_slot_id: "" });
-  const [userDetails, setUserDetails] = useState({});
-  const [currentUserId, setCurrentUserId] = useState("");
-  const [courseNames, setCourseNames] = useState({});
-  const [availableChangeRequests, setAvailableChangeRequests] = useState([]);
-  const navigate = useNavigate();
+  const [users, setUsers] = useState({}); // Użyjemy obiektu/mapy dla szybszego dostępu
+  const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
 
-  // Sprawdzenie czy użytkownik jest zalogowany (np. po tokenie w localStorage)
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login", { replace: true });
-    }
-    const userId = localStorage.getItem("user_id");
-    setCurrentUserId(userId || "");
-
-    apiRequest("/proposals")
-      .then(async (data) => {
-        setProposals(data);
-
-        // Pobierz dane użytkowników tylko dla unikalnych user_id z proposals
-        const uniqueUserIds = [...new Set(data.map((p) => p.user_id))];
-        const userMap = {};
-        await Promise.all(
-          uniqueUserIds.map(async (id) => {
-            if (id) {
-              try {
-                const user = await apiRequest(`/users/${id}`);
-                userMap[id] = user;
-              } catch (e) {
-                userMap[id] = { name: "Nieznany", email: "" };
-              }
-            }
-          })
-        );
-        setUserDetails(userMap);
-
-        // Pobierz nazwy kursów dla każdej propozycji
-        const courseNameMap = {};
-        await Promise.all(
-          data.map(async (proposal) => {
-            try {
-              const changeRequestId = proposal.change_request_id;
-              if (!changeRequestId) return;
-              const changeRequest = await apiRequest(`/change_requests/${changeRequestId}?request_id=${changeRequestId}`);
-              const courseEventId = changeRequest.course_event_id;
-              if (!courseEventId) return;
-              const courseEvent = await apiRequest(`/courses/${courseEventId}/events`);
-              const courseId = courseEvent[0].course_id;
-              if (!courseId) return;
-              const course = await apiRequest(`/courses/${courseId}`);
-              courseNameMap[proposal.id] = course.name || "Nieznany kurs";
-            } catch {
-              courseNameMap[proposal.id] = "Nieznany kurs";
-            }
-          })
-        );
-        setCourseNames(courseNameMap);
-
-        // Pobierz unikalne change_request_id z proposals i szczegóły do selecta
-        const uniqueChangeRequestIds = [...new Set(data.map((p) => p.change_request_id))].filter(Boolean);
-        const changeRequestsList = [];
-        await Promise.all(
-          uniqueChangeRequestIds.map(async (id) => {
-            try {
-              const changeRequest = await apiRequest(`/change_requests/${id}?request_id=${id}`);
-              
-              const courseEventId = changeRequest.course_event_id;
-              console.log("courseEventId", courseEventId);
-              if (!courseEventId) return;
-              const courseEvent = await apiRequest(`/courses/events/${courseEventId}`);
-              console.log("courseEvent", courseEvent);
-              // courseEvent: { time_slot_id, day }
-              changeRequestsList.push({
-                id,
-                time_slot_id: courseEvent.time_slot_id,
-                day: courseEvent.day,
-              });
-            } catch {
-              // pomiń błędne
-            }
-          })
-        );
-        setAvailableChangeRequests(changeRequestsList);
-      })
-      .catch((error) => console.error("Error fetching proposals:", error));
-  }, [navigate]);
-
-  const handleOpen = async () => {
-    // Pobierz user_id z /auth/me
+  const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      const user = await apiRequest("/auth/me");
-      setFormData((prev) => ({
-        ...prev,
-        user_id: user.id || "",
-      }));
-    } catch {
-      setFormData((prev) => ({
-        ...prev,
-        user_id: "",
-      }));
+      // Pobieramy wszystkie propozycje i wszystkich użytkowników równolegle
+      const [proposalsData, usersData] = await Promise.all([
+        apiRequest("/proposals"),
+        apiRequest("/users"),
+      ]);
+
+      setProposals(proposalsData || []);
+
+      // Tworzymy mapę użytkowników dla łatwego dostępu: { 1: {id: 1, name: 'Jan'}, ... }
+      const usersMap = usersData.reduce((acc, user) => {
+        acc[user.id] = user;
+        return acc;
+      }, {});
+      setUsers(usersMap);
+    } catch (error) {
+      console.error("Błąd podczas pobierania danych:", error);
+    } finally {
+      setLoading(false);
     }
-    setOpen(true);
-  };
-  const handleClose = () => setOpen(false);
+  }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const handleSubmit = () => {
-    apiRequest("/proposals", {
-      method: "POST",
-      body: JSON.stringify({
-      change_request_id: formData.change_request_id,
-      user_id: formData.user_id,
-      day: formData.day,
-      time_slot_id: Number(formData.time_slot_id),
-}),
-    })
-      .then((newProposal) => {
-        setProposals((prev) => [...prev, newProposal]);
-        handleClose();
-        // Opcjonalnie pobierz dane użytkownika dla nowej propozycji
-        if (newProposal.user_id && !userDetails[newProposal.user_id]) {
-          apiRequest(`/users/${newProposal.user_id}`)
-            .then((user) => setUserDetails((prev) => ({ ...prev, [newProposal.user_id]: user })))
-            .catch(() => {});
-        }
-      })
-      .catch((error) => console.error("Error adding proposal:", error));
+  const handleDelete = (id) => {
+    if (
+      window.confirm(
+        "Czy na pewno chcesz usunąć tę propozycję? Tej akcji nie można cofnąć."
+      )
+    ) {
+      apiRequest(`/proposals/${id}`, { method: "DELETE" })
+        .then(() => {
+          // Po usunięciu odświeżamy dane
+          fetchData();
+        })
+        .catch((error) => alert(`Błąd podczas usuwania: ${error.message}`));
+    }
   };
 
-  // Usuwanie propozycji
-  const handleDelete = (proposalId) => {
-    // Optimistycznie usuń z UI
-    setProposals((prev) => prev.filter((proposal) => proposal.id !== proposalId));
+  const columns = [
+    { field: "id", headerName: "ID Propozycji", width: 120 },
+    { field: "change_request_id", headerName: "ID Zgłoszenia", width: 120 },
+    {
+      field: "user_id",
+      headerName: "Zaproponowane przez",
+      flex: 1,
+      // Pobieramy nazwę użytkownika z naszej mapy
+      valueGetter: (value) => users[value]?.name || `Użytkownik ID: ${value}`,
+    },
+    {
+      field: "day",
+      headerName: "Dzień",
+      width: 180,
+      valueFormatter: (value) =>
+        format(new Date(value), "EEEE, d MMMM yyyy", { locale: pl }),
+    },
+    {
+      field: "time_slot_id",
+      headerName: "Slot czasowy",
+      width: 150,
+      valueGetter: (value) => timeSlotMap[value] || "Nieznany",
+    },
+    {
+      field: "actions",
+      headerName: "Akcje",
+      width: 100,
+      sortable: false,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={1}>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => handleDelete(params.row.id)}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Stack>
+      ),
+    },
+  ];
 
-    // Wyślij żądanie DELETE do backendu
-    apiRequest(`/proposals/${proposalId}`, { method: "DELETE" })
-      .catch((error) => {
-        console.error("Error deleting proposal:", error);
-        // Przy błędzie pobierz ponownie listę
-        apiRequest("/proposals")
-          .then((data) => setProposals(data))
-          .catch(() => {});
-      });
-  };
+  const filteredRows = proposals.filter((proposal) => {
+    const search = searchText.toLowerCase();
+    const userName = (users[proposal.user_id]?.name || "").toLowerCase();
+    return (
+      userName.includes(search) ||
+      String(proposal.change_request_id).includes(search)
+    );
+  });
 
   return (
-    <Box>
-      <Navbar />
-      <Box padding={2}>
-        {/* Dodaj poniżej */}
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Twoje proposals ID:{" "}
-          {proposals
-            .filter((p) => String(p.user_id) === String(currentUserId))
-            .map((p) => p.id)
-            .join(", ") || "Brak"}
-        </Typography>
-        <Typography variant="h4">Zarządzaj propozycjami</Typography>
-        <List>
-          {proposals.map((proposal) => {
-            const user = userDetails[proposal.user_id];
-            const courseName = courseNames[proposal.id];
-
-            // Funkcja do tłumaczenia numeru slotu na zakres godzin
-            const timeSlotMap = {
-              1: "8:00-9:30",
-              2: "9:45-11:15",
-              3: "11:30-13:00",
-              4: "13:15-14:45",
-              5: "15:00-16:30",
-              6: "16:45-18:15",
-              7: "18:30-20:00",
-            };
-
-            // Formatowanie daty
-            const formatDay = (dateStr) => {
-              if (!dateStr) return "";
-              try {
-                return format(new Date(dateStr), "d MMMM yyyy", { locale: pl });
-              } catch {
-                return dateStr;
-              }
-            };
-
-            return (
-              <ListItem
-                key={proposal.id}
-                secondaryAction={
-                  <IconButton edge="end" onClick={() => handleDelete(proposal.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                }
-              >
-                <ListItemText
-                  primary={
-                    <>
-                      <Typography variant="h6">
-                        {courseName ? `Kurs: ${courseName}` : "Kurs: [ładowanie...]"}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {user
-                          ? `Od: ${user.name} (${user.email})`
-                          : `Od: [ładowanie...]`}
-                      </Typography>
-                    </>
-                  }
-                  secondary={
-                    proposal.day && proposal.time_slot_id
-                      ? `Dzień: ${formatDay(proposal.day)}, Slot: ${timeSlotMap[proposal.time_slot_id] || "nieznany"}`
-                      : "Brak danych o terminie"
-                  }
-                />
-              </ListItem>
-            );
-          })}
-        </List>
-        <Button variant="contained" onClick={handleOpen}>
-          Dodaj propozycję
-        </Button>
-      </Box>
-
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Dodaj propozycję</DialogTitle>
-        <DialogContent>
-          {/* ZAMIANA: Select z listą change requestów */}
-          <TextField
-            margin="dense"
-            label="Change request (dzień, slot)"
-            name="change_request_id"
-            select
-            fullWidth
-            value={formData.change_request_id}
-            onChange={handleChange}
-            InputLabelProps={{ shrink: true }}
-          >
-            {availableChangeRequests.length === 0 && (
-              <MenuItem value="">Brak dostępnych change requestów</MenuItem>
-            )}
-            {availableChangeRequests.map((cr) => (
-              <MenuItem key={cr.id} value={cr.id}>
-                {`ID: ${cr.id} | Dzień: ${cr.day || "?"} | Slot: ${cr.time_slot_id || "?"}`}
-              </MenuItem>
-            ))}
-          </TextField>
-          {/* Pole wyboru dnia */}
-          <TextField
-            margin="dense"
-            name="day"
-            label="Dzień"
-            type="date"
-            fullWidth
-            value={formData.day || ""}
-            onChange={handleChange}
-            InputLabelProps={{ shrink: true }}
+    <Container maxWidth="lg">
+      <Paper>
+        <Toolbar>
+          <Box sx={{ flexGrow: 1 }}>
+            <TextField
+              variant="outlined"
+              size="small"
+              placeholder="Szukaj po nazwisku lub ID zgłoszenia..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              sx={{ width: 350 }}
+            />
+          </Box>
+        </Toolbar>
+        <Box sx={{ height: "70vh", width: "100%" }}>
+          <DataGrid
+            rows={filteredRows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            loading={loading}
+            pageSizeOptions={[10, 25, 50]}
+            checkboxSelection
+            disableRowSelectionOnClick
           />
-          {/* Pole wyboru slotu czasowego */}
-          <TextField
-            margin="dense"
-            name="time_slot_id"
-            label="Slot czasowy"
-            select
-            fullWidth
-            value={formData.time_slot_id || ""}
-            onChange={handleChange}
-            InputLabelProps={{ shrink: true }}
-          >
-            <MenuItem value={1}>8:00-9:30</MenuItem>
-            <MenuItem value={2}>9:45-11:15</MenuItem>
-            <MenuItem value={3}>11:30-13:00</MenuItem>
-            <MenuItem value={4}>13:15-14:45</MenuItem>
-            <MenuItem value={5}>15:00-16:30</MenuItem>
-            <MenuItem value={6}>16:45-18:15</MenuItem>
-            <MenuItem value={7}>18:30-20:00</MenuItem>
-          </TextField>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Anuluj</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            Dodaj
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 

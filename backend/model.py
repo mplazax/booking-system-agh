@@ -47,7 +47,7 @@ class Group(Base):
     year = Column(Integer, nullable=True)
     leader_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    leader = relationship("User", foreign_keys=[leader_id])
+    leader = relationship("User", back_populates="led_group")
     courses = relationship(
         "Course", back_populates="group", cascade="all, delete-orphan"
     )
@@ -64,12 +64,8 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     is_active = Column(Boolean, default=True)
 
-    group = relationship(
-        "Group", foreign_keys="Group.leader_id", back_populates="leader", uselist=False
-    )
-    leads_group = relationship(
-        "Group", foreign_keys="Group.leader_id", back_populates="leader", uselist=False
-    )
+    led_group = relationship("Group", foreign_keys=[Group.leader_id], back_populates="leader", uselist=False)
+    
     initiated_requests = relationship("ChangeRequest", back_populates="initiator")
     availability_proposals = relationship("AvailabilityProposal", back_populates="user")
 
@@ -123,10 +119,10 @@ class TimeSlots(Base):
     end_time = Column(Time, nullable=False)
 
     course_events = relationship(
-        "CourseEvent", back_populates="slot_id", cascade="all, delete-orphan"
+        "CourseEvent", back_populates="slot"
     )
     availability_proposals = relationship(
-        "AvailabilityProposal", back_populates="time_slot", cascade="all, delete-orphan"
+        "AvailabilityProposal", back_populates="time_slot"
     )
     change_recommendations = relationship(
         "ChangeRecomendation", back_populates="recommended_interval"
@@ -145,7 +141,7 @@ class CourseEvent(Base):
 
     course = relationship("Course", back_populates="events")
     room = relationship("Room", back_populates="course_events")
-    slot_id = relationship("TimeSlots", back_populates="course_events")
+    slot = relationship("TimeSlots", back_populates="course_events")
     change_requests = relationship(
         "ChangeRequest", back_populates="course_event", cascade="all, delete-orphan"
     )

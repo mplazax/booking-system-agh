@@ -1,29 +1,19 @@
-// frontend/src/pages/ChangeRequestsPage.js
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
-  Box,
   Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  List,
-  ListItem,
-  ListItemText,
+  Container,
+  CircularProgress,
+  Backdrop,
 } from "@mui/material";
 import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
 import { format, parse, startOfWeek, getDay } from "date-fns";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-import Navbar from "../components/Navbar";
 import { apiRequest } from "../services/apiService";
 import { pl } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../App";
-import SchoolIcon from '@mui/icons-material/School';
+import "react-big-calendar/lib/css/react-big-calendar.css";
 
-const locales = { "pl": pl };
+const locales = { pl: pl };
 const localizer = dateFnsLocalizer({
   format,
   parse,
@@ -31,27 +21,52 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales,
 });
+const availableViews = [Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA];
 
 const ChangeRequestsPage = () => {
   const [events, setEvents] = useState([]);
-  const [eventDetails, setEventDetails] = useState(null);
-  const [openEventDialog, setOpenEventDialog] = useState(false);
-  const [openProposalDialog, setOpenProposalDialog] = useState(false);
-  const [formData, setFormData] = useState({ start: "", end: "", reason: "", room_requirements: "" });
+  const [loading, setLoading] = useState(false);
   const [view, setView] = useState(Views.MONTH);
-  const [date, setDate] = useState(new Date());
+  const { user } = useContext(UserContext);
   const navigate = useNavigate();
-  const user = useContext(UserContext);
+
+  const calendarFormats = {
+    agendaHeaderFormat: ({ start, end }, culture, local) =>
+      local.format(start, "d MMMM yyyy", { locale: pl }) +
+      " — " +
+      local.format(end, "d MMMM yyyy", { locale: pl }),
+    agendaDateFormat: (date, culture, local) =>
+      local.format(date, "EEEE, d MMMM", { locale: pl }),
+  };
+
+  const fetchAllEvents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const courses = await apiRequest("/courses");
+      const allEventsPromises = courses.map(async (course) => {
+        const eventsData = await apiRequest(`/courses/${course.id}/events`);
+        return eventsData.map((event) => ({
+          ...event,
+          id: `${course.id}-${event.id}`,
+          title: course.name,
+          start: getSlotTimes(event.day, event.time_slot_id).start,
+          end: getSlotTimes(event.day, event.time_slot_id).end,
+          courseId: course.id,
+        }));
+      });
+      const allEventsArrays = await Promise.all(allEventsPromises);
+      setEvents(allEventsArrays.flat());
+    } catch (error) {
+      console.error("Błąd podczas pobierania wydarzeń:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login", { replace: true });
-    }
     fetchAllEvents();
-  }, [navigate]);
+  }, [fetchAllEvents]);
 
-  // Funkcja pomocnicza do wyliczania godzin na podstawie slotu
   const getSlotTimes = (day, slot) => {
     const slotTimes = [
       { start: "08:00", end: "09:30" },
@@ -62,159 +77,82 @@ const ChangeRequestsPage = () => {
       { start: "16:45", end: "18:15" },
       { start: "18:30", end: "20:00" },
     ];
-    const { start, end } = slotTimes[slot - 1];
-    const startDate = new Date(`${day}T${start}`);
-    const endDate = new Date(`${day}T${end}`);
-    return { start: startDate, end: endDate };
+    const times = slotTimes[slot - 1] || { start: "00:00", end: "00:00" };
+    const dateString = format(new Date(day), "yyyy-MM-dd");
+    return {
+      start: new Date(`${dateString}T${times.start}`),
+      end: new Date(`${dateString}T${times.end}`),
+    };
   };
 
-  const fetchAllEvents = async () => {
-    try {
-      const courses = await apiRequest("/courses");
-      const allEvents = [];
-      for (const course of courses) {
-        const events = await apiRequest(`/courses/${course.id}/events`);
-        for (const event of events) {
-          const { start, end } = getSlotTimes(event.day, event.time_slot_id);
-          allEvents.push({
-            ...event,
-            id: `${course.id}-${event.id}`,
-            title: `Kurs ${course.name || course.id}`,
-            start,
-            end,
-            time_slot_id: event.time_slot_id,
-            courseId: course.id,
-            courseName: course.name,
-          });
-        }
-      }
-      setEvents(allEvents);
-    } catch (error) {
-      console.error("Błąd podczas pobierania wydarzeń:", error);
-    }
-  };
-
-  // Po kliknięciu w wydarzenie pobierz szczegóły i pokaż dialog
   const handleSelectEvent = async (event) => {
-    try {
-      // Pobierz szczegóły pokoju
-      let room = null;
-      if (event.room_id) {
-        room = await apiRequest(`/rooms/${event.room_id}`);
-      }
-      setEventDetails({
-        ...event,
-        room,
-      });
-      setOpenEventDialog(true);
-    } catch (error) {
-      console.error("Błąd podczas pobierania szczegółów wydarzenia:", error);
+    if (!user) {
+      alert("Błąd: Nie można zidentyfikować użytkownika.");
+      return;
     }
-  };
 
-  const handleCloseEventDialog = () => {
-    setOpenEventDialog(false);
-    setEventDetails(null);
-  };
-
-  // Otwórz dialog do zgłoszenia zmiany
-  const handleOpenProposalDialog = () => {
-    setFormData({ start: "", end: "", reason: "", room_requirements: "" });
-    setOpenProposalDialog(true);
-  };
-
-  const handleCloseProposalDialog = () => setOpenProposalDialog(false);
-
-  const handleSubmitProposal = async () => {
-    try {
-      if (!user) throw new Error("Brak danych użytkownika");
-
-      const changeRequestPayload = {
-        course_event_id: parseInt(eventDetails.id.split("-")[1], 10),
-        initiator_id: user.id,
-        status: "PENDING",
-        reason: formData.reason,
-        room_requirements: formData.room_requirements,
-        created_at: new Date().toISOString(),
-      };
-      alert(changeRequestPayload);
-      const newChangeRequest = await apiRequest("/change_requests/", {
-        method: "POST",
-        body: JSON.stringify(changeRequestPayload),
-      });
-
-      const proposalPayload = {
-        change_request_id: newChangeRequest.id,
-        user_id: user.id,
-        interval: {
-          start_date: new Date(formData.start).toISOString(),
-          end_date: new Date(formData.end).toISOString(),
-        },
-      };
-      await apiRequest("/proposals/", {
-        method: "POST",
-        body: JSON.stringify(proposalPayload),
-      });
-
-      setOpenProposalDialog(false);
-      setOpenEventDialog(false);
-      fetchAllEvents();
-    } catch (error) {
-      console.error("Błąd podczas zgłaszania zmiany:", error);
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleNavigate = (action) => {
-    let newDate = new Date(date);
-    if (action === "TODAY") {
-      newDate = new Date();
-    } else if (action === "PREV") {
-      if (view === Views.MONTH) {
-        newDate.setMonth(newDate.getMonth() - 1);
-      } else if (view === Views.WEEK) {
-        newDate.setDate(newDate.getDate() - 7);
-      } else if (view === Views.DAY) {
-        newDate.setDate(newDate.getDate() - 1);
+    if (
+      window.confirm(
+        `Czy chcesz zgłosić chęć zmiany terminu dla zajęć "${event.title}"?`
+      )
+    ) {
+      setLoading(true);
+      try {
+        const changeRequestPayload = {
+          course_event_id: parseInt(event.id.split("-")[1], 10),
+          initiator_id: user.id,
+          status: "PENDING",
+          reason: "Chęć zmiany terminu zainicjowana z kalendarza.",
+          room_requirements: "",
+          created_at: new Date().toISOString(),
+        };
+        const newRequest = await apiRequest("/change_requests/", {
+          method: "POST",
+          body: JSON.stringify(changeRequestPayload),
+        });
+        alert(
+          `Zgłoszenie #${newRequest.id} zostało pomyślnie utworzone. Zostaniesz teraz przekierowany do jego szczegółów, aby wskazać swoją dostępność.`
+        );
+        navigate(`/request/${newRequest.id}`);
+      } catch (error) {
+        alert(`Wystąpił błąd podczas tworzenia zgłoszenia: ${error.message}`);
+      } finally {
+        setLoading(false);
       }
-    } else if (action === "NEXT") {
-      if (view === Views.MONTH) {
-        newDate.setMonth(newDate.getMonth() + 1);
-      } else if (view === Views.WEEK) {
-        newDate.setDate(newDate.getDate() + 7);
-      } else if (view === Views.DAY) {
-        newDate.setDate(newDate.getDate() + 1);
-      }
-    } else if (action instanceof Date) {
-      newDate = action;
     }
-    setDate(newDate);
   };
 
   return (
-    <Box>
-      <Navbar />
-      <Box padding={2}>
-        <Typography variant="h4" gutterBottom>
-          Zarządzaj zgłoszeniami zmian
-        </Typography>
+    <Container maxWidth="xl">
+      <Backdrop
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={loading}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
+      <Typography variant="h4" gutterBottom>
+        Kalendarz Zajęć
+      </Typography>
+
+      <div
+        style={{
+          height: "78vh",
+          backgroundColor: "white",
+          padding: "1rem",
+          borderRadius: "8px",
+        }}
+      >
         <Calendar
           localizer={localizer}
           culture="pl"
           events={events}
           startAccessor="start"
           endAccessor="end"
-          style={{ height: 700, margin: "50px 0" }}
-          views={[Views.MONTH, Views.WEEK, Views.DAY]}
-          onView={(newView) => setView(newView)}
           view={view}
-          date={date}
-          onNavigate={handleNavigate}
+          onView={(newView) => setView(newView)}
+          views={availableViews}
           onSelectEvent={handleSelectEvent}
+          formats={calendarFormats}
           messages={{
             date: "Data",
             time: "Czas",
@@ -231,98 +169,11 @@ const ChangeRequestsPage = () => {
             today: "Dziś",
             agenda: "Agenda",
             noEventsInRange: "Brak wydarzeń w tym zakresie.",
-            showMore: (total) => `+${total} więcej`,
+            showMore: (total) => `+ ${total} więcej`,
           }}
         />
-      </Box>
-
-      {/* Dialog ze szczegółami wydarzenia */}
-      <Dialog open={openEventDialog} onClose={handleCloseEventDialog}>
-        <DialogTitle>Szczegóły wydarzenia</DialogTitle>
-        <DialogContent>
-          {eventDetails && (
-            <List>
-              <ListItem>
-                <ListItemText primary="Kurs" secondary={eventDetails.courseName} />
-              </ListItem>
-              <ListItem>
-                <ListItemText primary="Data początkowa" secondary={eventDetails.start.toLocaleString()} />
-              </ListItem>
-              <ListItem>
-                <ListItemText primary="Data końcowa" secondary={eventDetails.end.toLocaleString()} />
-              </ListItem>
-              {eventDetails.room && (
-                <>
-                  <ListItem>
-                    <ListItemText primary="Pokój" secondary={eventDetails.room.name} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Pojemność" secondary={eventDetails.room.capacity} />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Wyposażenie" secondary={eventDetails.room.equipment || "Brak danych"} />
-                  </ListItem>
-                </>
-              )}
-            </List>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEventDialog}>Zamknij</Button>
-          <Button onClick={handleOpenProposalDialog} variant="contained">
-            Zaproponuj zmianę
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={openProposalDialog} onClose={handleCloseProposalDialog}>
-        <DialogTitle>Zaproponuj zmianę terminu</DialogTitle>
-        <DialogContent>
-          <TextField
-              margin="dense"
-              label="Nowa data początkowa"
-              name="start"
-              type="datetime-local"
-              fullWidth
-              value={formData.start}
-              InputLabelProps={{ shrink: true }}
-              onChange={handleChange}
-          />
-          <TextField
-              margin="dense"
-              label="Nowa data końcowa"
-              name="end"
-              type="datetime-local"
-              fullWidth
-              value={formData.end}
-              InputLabelProps={{ shrink: true }}
-              onChange={handleChange}
-          />
-          <TextField
-              margin="dense"
-              label="Powód zmiany"
-              name="reason"
-              fullWidth
-              value={formData.reason}
-              onChange={handleChange}
-          />
-          <TextField
-              margin="dense"
-              label="Wymagania dotyczące sali"
-              name="room_requirements"
-              fullWidth
-              value={formData.room_requirements}
-              onChange={handleChange}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseProposalDialog}>Anuluj</Button>
-          <Button onClick={handleSubmitProposal} variant="contained">
-            Wyślij propozycję
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+      </div>
+    </Container>
   );
 };
 
